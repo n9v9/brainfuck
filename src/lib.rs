@@ -1,5 +1,7 @@
 use std::io::{self, Read, Write};
 
+mod compiler;
+
 /// The memory size that is available to a Brainfuck program.
 const DATA_SIZE: usize = 30_000;
 
