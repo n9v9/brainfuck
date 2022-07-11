@@ -57,10 +57,7 @@ where
                 b',' => self
                     .reader
                     .read_exact(&mut self.data[self.dp..self.dp + 1])?,
-                b'.' => {
-                    self.writer.write_all(&self.data[self.dp..self.dp + 1])?;
-                    self.writer.flush()?;
-                }
+                b'.' => self.writer.write_all(&self.data[self.dp..self.dp + 1])?,
                 b'[' if self.data[self.dp] == 0 => {
                     let mut brackets = 0;
                     loop {
@@ -95,7 +92,7 @@ where
             self.ip += 1;
         }
 
-        Ok(())
+        self.writer.flush()
     }
 }
 
