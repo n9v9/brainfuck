@@ -1,4 +1,7 @@
-use std::collections::HashSet;
+use crate::syntax::{
+    IDENTS, IDENT_DEC_DATA, IDENT_DEC_DP, IDENT_INC_DATA, IDENT_INC_DP, IDENT_JUMP_NOT_ZERO,
+    IDENT_JUMP_ZERO, IDENT_READ_BYTE, IDENT_WRITE_BYTE,
+};
 
 pub struct Compiler<'a> {
     code: &'a [u8],
@@ -12,39 +15,33 @@ impl<'a> Compiler<'a> {
     }
 
     pub fn compile(&mut self) -> Vec<Instruction> {
-        let mut res = Vec::new();
+        let mut instructions = Vec::new();
         let mut i = 0;
-        let mut changed = false;
 
         while i < self.code.len() {
-            self.push_instruction(&mut i, b'>', &mut res, &mut changed);
-            self.push_instruction(&mut i, b'<', &mut res, &mut changed);
-            self.push_instruction(&mut i, b'+', &mut res, &mut changed);
-            self.push_instruction(&mut i, b'-', &mut res, &mut changed);
-            self.push_instruction(&mut i, b'.', &mut res, &mut changed);
-            self.push_instruction(&mut i, b',', &mut res, &mut changed);
-            self.push_instruction(&mut i, b'[', &mut res, &mut changed);
-            self.push_instruction(&mut i, b']', &mut res, &mut changed);
+            let prev_i = i;
 
-            if !changed {
-                i += 1;
+            for ident in IDENTS.iter() {
+                self.push_instruction(&mut i, *ident, &mut instructions);
             }
 
-            changed = false;
+            if prev_i == i {
+                i += 1;
+            }
         }
 
         i = 0;
-        while i < res.len() {
-            if let Instruction::JumpIfZeroPlaceholder = res[i] {
+        while i < instructions.len() {
+            if let Instruction::JumpZeroPlaceholder = instructions[i] {
                 let mut jumps = 0;
                 let mut j = i;
                 loop {
-                    if j == res.len() {
+                    if j == instructions.len() {
                         break;
                     }
-                    match res[j] {
-                        Instruction::JumpIfZeroPlaceholder => jumps += 1,
-                        Instruction::JumpIfNotZeroPlaceholder => jumps -= 1,
+                    match instructions[j] {
+                        Instruction::JumpZeroPlaceholder => jumps += 1,
+                        Instruction::JumpNotZeroPlaceholder => jumps -= 1,
                         _ => {}
                     };
                     if jumps == 0 {
@@ -53,25 +50,28 @@ impl<'a> Compiler<'a> {
                     j += 1;
                 }
                 // Jump target ist the instruction after the matching backward jump.
-                res[i] = Instruction::JumpIfZero(j - i + 1);
+                instructions[i] = Instruction::JumpZero(j - i + 1);
             }
             i += 1;
         }
 
         i = 0;
-        while i < res.len() {
-            if let Instruction::JumpIfZero(offset) = res[i] {
+        while i < instructions.len() {
+            if let Instruction::JumpZero(offset) = instructions[i] {
                 // Jump target is the instruction after the matching backward jump.
                 let target = i + offset;
                 let matching_jump = target - 1;
-                assert_eq!(res[matching_jump], Instruction::JumpIfNotZeroPlaceholder);
+                assert_eq!(
+                    instructions[matching_jump],
+                    Instruction::JumpNotZeroPlaceholder
+                );
                 // Jump target ist the instruction after the matching forward jump.
-                res[matching_jump] = Instruction::JumpIfNotZero(matching_jump - i - 1);
+                instructions[matching_jump] = Instruction::JumpNotZero(matching_jump - i - 1);
             }
             i += 1;
         }
 
-        res
+        instructions
     }
 
     fn push_instruction(
@@ -79,19 +79,14 @@ impl<'a> Compiler<'a> {
         i: &mut usize,
         instruction: u8,
         instructions: &mut Vec<Instruction>,
-        changed: &mut bool,
     ) {
         let mut args = 0;
 
-        let valid: HashSet<_> = [b'>', b'<', b'+', b'-', b'.', b',', b'[', b']']
-            .into_iter()
-            .collect();
-
         while *i < self.code.len() {
-            if self.code[*i] != instruction && !valid.contains(&self.code[*i]) {
+            if self.code[*i] != instruction && !IDENTS.contains(&self.code[*i]) {
                 *i += 1;
                 continue;
-            } else if self.code[*i] != instruction && valid.contains(&self.code[*i]) {
+            } else if self.code[*i] != instruction && IDENTS.contains(&self.code[*i]) {
                 break;
             }
 
@@ -102,23 +97,22 @@ impl<'a> Compiler<'a> {
             // TODO: Read and write instructions could be repeated but take no argument at the
             // moment.
             match instruction {
-                b'[' | b']' | b'.' | b',' => break,
+                IDENT_JUMP_ZERO | IDENT_JUMP_NOT_ZERO | IDENT_WRITE_BYTE | IDENT_READ_BYTE => break,
                 _ => {}
             }
         }
 
         if args > 0 {
-            *changed = true;
             instructions.push(match instruction {
-                b'>' => Instruction::IncDP(args),
-                b'<' => Instruction::DecDP(args),
-                b'+' => Instruction::IncByteAtDP(args),
-                b'-' => Instruction::DecByteAtDP(args),
-                b'.' => Instruction::WriteByte,
-                b',' => Instruction::ReadByte,
-                b'[' => Instruction::JumpIfZeroPlaceholder,
-                b']' => Instruction::JumpIfNotZeroPlaceholder,
-                _ => todo!(),
+                IDENT_INC_DP => Instruction::IncDP(args),
+                IDENT_DEC_DP => Instruction::DecDP(args),
+                IDENT_INC_DATA => Instruction::IncByteAtDP(args),
+                IDENT_DEC_DATA => Instruction::DecByteAtDP(args),
+                IDENT_WRITE_BYTE => Instruction::WriteByte,
+                IDENT_READ_BYTE => Instruction::ReadByte,
+                IDENT_JUMP_ZERO => Instruction::JumpZeroPlaceholder,
+                IDENT_JUMP_NOT_ZERO => Instruction::JumpNotZeroPlaceholder,
+                _ => unreachable!(),
             });
         }
     }
@@ -132,10 +126,10 @@ pub enum Instruction {
     DecByteAtDP(usize),
     WriteByte,
     ReadByte,
-    JumpIfZero(usize),
-    JumpIfZeroPlaceholder,
-    JumpIfNotZero(usize),
-    JumpIfNotZeroPlaceholder,
+    JumpZero(usize),
+    JumpZeroPlaceholder,
+    JumpNotZero(usize),
+    JumpNotZeroPlaceholder,
 }
 
 #[cfg(test)]
@@ -156,37 +150,37 @@ mod tests {
             instructions,
             vec![
                 Instruction::IncByteAtDP(1),
-                Instruction::JumpIfZero(31),
+                Instruction::JumpZero(31),
                 Instruction::IncDP(1),
-                Instruction::JumpIfZero(26),
+                Instruction::JumpZero(26),
                 Instruction::DecDP(1),
                 Instruction::DecByteAtDP(1),
-                Instruction::JumpIfZero(2),
-                Instruction::JumpIfNotZero(0),
+                Instruction::JumpZero(2),
+                Instruction::JumpNotZero(0),
                 Instruction::IncDP(1),
                 Instruction::IncByteAtDP(1),
-                Instruction::JumpIfZero(18),
+                Instruction::JumpZero(18),
                 Instruction::IncDP(1),
                 Instruction::IncByteAtDP(3),
                 Instruction::IncDP(1),
-                Instruction::JumpIfZero(4),
+                Instruction::JumpZero(4),
                 Instruction::IncByteAtDP(11),
                 Instruction::IncDP(1),
-                Instruction::JumpIfNotZero(2),
-                Instruction::JumpIfZero(3),
+                Instruction::JumpNotZero(2),
+                Instruction::JumpZero(3),
                 Instruction::IncDP(1),
-                Instruction::JumpIfNotZero(1),
+                Instruction::JumpNotZero(1),
                 Instruction::DecByteAtDP(1),
-                Instruction::JumpIfZero(3),
+                Instruction::JumpZero(3),
                 Instruction::DecDP(1),
-                Instruction::JumpIfNotZero(1),
+                Instruction::JumpNotZero(1),
                 Instruction::IncDP(1),
                 Instruction::DecByteAtDP(1),
-                Instruction::JumpIfNotZero(16),
-                Instruction::JumpIfNotZero(24),
+                Instruction::JumpNotZero(16),
+                Instruction::JumpNotZero(24),
                 Instruction::IncByteAtDP(10),
                 Instruction::DecDP(1),
-                Instruction::JumpIfNotZero(29),
+                Instruction::JumpNotZero(29),
                 Instruction::IncDP(6),
                 Instruction::DecByteAtDP(4),
                 Instruction::WriteByte,

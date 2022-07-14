@@ -1,5 +1,10 @@
 use std::io::{self, Read, Write};
 
+use crate::syntax::{
+    IDENT_DEC_DATA, IDENT_DEC_DP, IDENT_INC_DATA, IDENT_INC_DP, IDENT_JUMP_NOT_ZERO,
+    IDENT_JUMP_ZERO, IDENT_READ_BYTE, IDENT_WRITE_BYTE,
+};
+
 /// The memory size that is available to a Brainfuck program.
 const DATA_SIZE: usize = 30_000;
 
@@ -47,23 +52,23 @@ where
         while self.ip < self.code.len() {
             let instruction = self.code[self.ip];
             match instruction {
-                b'>' => {
+                IDENT_INC_DP => {
                     self.dp += 1;
                     assert!(self.dp < DATA_SIZE);
                 }
-                b'<' => self.dp -= 1,
-                b'+' => self.data[self.dp] = self.data[self.dp].wrapping_add(1),
-                b'-' => self.data[self.dp] = self.data[self.dp].wrapping_sub(1),
-                b',' => self
+                IDENT_DEC_DP => self.dp -= 1,
+                IDENT_INC_DATA => self.data[self.dp] = self.data[self.dp].wrapping_add(1),
+                IDENT_DEC_DATA => self.data[self.dp] = self.data[self.dp].wrapping_sub(1),
+                IDENT_READ_BYTE => self
                     .reader
                     .read_exact(&mut self.data[self.dp..self.dp + 1])?,
-                b'.' => self.writer.write_all(&self.data[self.dp..self.dp + 1])?,
-                b'[' if self.data[self.dp] == 0 => {
+                IDENT_WRITE_BYTE => self.writer.write_all(&self.data[self.dp..self.dp + 1])?,
+                IDENT_JUMP_ZERO if self.data[self.dp] == 0 => {
                     let mut brackets = 0;
                     loop {
                         match self.code[self.ip] {
-                            b'[' => brackets += 1,
-                            b']' => brackets -= 1,
+                            IDENT_JUMP_ZERO => brackets += 1,
+                            IDENT_JUMP_NOT_ZERO => brackets -= 1,
                             _ => {}
                         };
                         if brackets == 0 {
@@ -72,12 +77,12 @@ where
                         self.ip += 1;
                     }
                 }
-                b']' if self.data[self.dp] != 0 => {
+                IDENT_JUMP_NOT_ZERO if self.data[self.dp] != 0 => {
                     let mut brackets = 0;
                     loop {
                         match self.code[self.ip] {
-                            b'[' => brackets -= 1,
-                            b']' => brackets += 1,
+                            IDENT_JUMP_ZERO => brackets -= 1,
+                            IDENT_JUMP_NOT_ZERO => brackets += 1,
                             _ => {}
                         };
                         if brackets == 0 {

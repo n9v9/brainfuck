@@ -49,11 +49,11 @@ where
                 Instruction::WriteByte => {
                     self.writer.write_all(&self.data[self.dp..self.dp + 1])?
                 }
-                Instruction::JumpIfZero(n) if self.data[self.dp] == 0 => {
+                Instruction::JumpZero(n) if self.data[self.dp] == 0 => {
                     self.ip += n;
                     continue;
                 }
-                Instruction::JumpIfNotZero(n) if self.data[self.dp] != 0 => {
+                Instruction::JumpNotZero(n) if self.data[self.dp] != 0 => {
                     self.ip -= n;
                     continue;
                 }
