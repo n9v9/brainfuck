@@ -50,8 +50,10 @@ where
                 Instruction::ReadByte => self
                     .reader
                     .read_exact(&mut self.data[self.dp..self.dp + 1])?,
-                Instruction::WriteByte => {
-                    self.writer.write_all(&self.data[self.dp..self.dp + 1])?
+                Instruction::WriteByte(n) => {
+                    for _ in 0..n {
+                        self.writer.write_all(&self.data[self.dp..self.dp + 1])?;
+                    }
                 }
                 Instruction::JumpZero(n) if self.data[self.dp] == 0 => {
                     self.ip += n;

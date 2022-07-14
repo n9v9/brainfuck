@@ -96,11 +96,9 @@ impl<'a> Compiler<'a> {
             args += 1;
             *i += 1;
 
-            // These instructions can not be repeated.
-            // TODO: Read and write instructions could be repeated but take no argument at the
-            // moment.
+            // Jump instructions can not be folded.
             match instruction {
-                IDENT_JUMP_ZERO | IDENT_JUMP_NOT_ZERO | IDENT_WRITE_BYTE | IDENT_READ_BYTE => break,
+                IDENT_JUMP_ZERO | IDENT_JUMP_NOT_ZERO => break,
                 _ => {}
             }
         }
@@ -111,7 +109,7 @@ impl<'a> Compiler<'a> {
                 IDENT_DEC_DP => Instruction::DecDP(args),
                 IDENT_INC_DATA => Instruction::IncByteAtDP(args),
                 IDENT_DEC_DATA => Instruction::DecByteAtDP(args),
-                IDENT_WRITE_BYTE => Instruction::WriteByte,
+                IDENT_WRITE_BYTE => Instruction::WriteByte(args),
                 IDENT_READ_BYTE => Instruction::ReadByte,
                 IDENT_JUMP_ZERO => Instruction::JumpZeroPlaceholder,
                 IDENT_JUMP_NOT_ZERO => Instruction::JumpNotZeroPlaceholder,
@@ -139,7 +137,7 @@ pub enum Instruction {
     DecByteAtDP(usize),
 
     /// Write the byte at the data pointer to the writer.
-    WriteByte,
+    WriteByte(usize),
 
     /// Read a byte from the reader into the byte at the data pointer.
     ReadByte,
@@ -164,14 +162,24 @@ mod tests {
     use super::{Compiler, Instruction};
 
     #[test]
-    fn test_program_hello_world() {
-        let mut compiler = Compiler::new(include_str!("../programs/hello_world.b"));
-        let instructions = compiler.compile();
+    fn test_remove_repeating_reads() {
+        let instructions = Compiler::new(",,,,,.,,,.,").compile();
 
-        // Special case regarding jumps:
-        // The same consecutive instructions are compiled into one instruction with
-        // an argument specifying how often to repeat the instruction. So `>>` counts
-        // as one instruction instead of two.
+        assert_eq!(
+            instructions,
+            vec![
+                Instruction::ReadByte,
+                Instruction::WriteByte(1),
+                Instruction::ReadByte,
+                Instruction::WriteByte(1),
+                Instruction::ReadByte
+            ]
+        );
+    }
+
+    #[test]
+    fn test_program_hello_world() {
+        let instructions = Compiler::new(include_str!("../programs/hello_world.b")).compile();
 
         assert_eq!(
             instructions,
@@ -210,35 +218,34 @@ mod tests {
                 Instruction::JumpNotZero(29),
                 Instruction::IncDP(6),
                 Instruction::DecByteAtDP(4),
-                Instruction::WriteByte,
+                Instruction::WriteByte(1),
                 Instruction::DecDP(2),
                 Instruction::IncByteAtDP(3),
-                Instruction::WriteByte,
+                Instruction::WriteByte(1),
                 Instruction::DecDP(1),
                 Instruction::DecByteAtDP(1),
-                Instruction::WriteByte,
-                Instruction::WriteByte,
+                Instruction::WriteByte(2),
                 Instruction::IncByteAtDP(3),
-                Instruction::WriteByte,
+                Instruction::WriteByte(1),
                 Instruction::DecDP(1),
                 Instruction::DecByteAtDP(1),
-                Instruction::WriteByte,
+                Instruction::WriteByte(1),
                 Instruction::IncDP(3),
-                Instruction::WriteByte,
+                Instruction::WriteByte(1),
                 Instruction::DecDP(2),
-                Instruction::WriteByte,
+                Instruction::WriteByte(1),
                 Instruction::IncByteAtDP(3),
-                Instruction::WriteByte,
+                Instruction::WriteByte(1),
                 Instruction::DecByteAtDP(6),
-                Instruction::WriteByte,
+                Instruction::WriteByte(1),
                 Instruction::IncDP(1),
                 Instruction::DecByteAtDP(1),
-                Instruction::WriteByte,
+                Instruction::WriteByte(1),
                 Instruction::DecDP(2),
                 Instruction::IncByteAtDP(1),
-                Instruction::WriteByte,
+                Instruction::WriteByte(1),
                 Instruction::DecDP(1),
-                Instruction::WriteByte
+                Instruction::WriteByte(1)
             ]
         );
     }
