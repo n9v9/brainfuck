@@ -3,7 +3,8 @@ use crate::syntax::{
     IDENT_JUMP_ZERO, IDENT_READ_BYTE, IDENT_WRITE_BYTE,
 };
 
-/// A compiler that turns a Brainfuck program into a list of instructions.
+/// A compiler that turns a Brainfuck program into a list of instructions which can then be
+/// executed by the [virtual machine](crate::virtual_machine::VirtualMachine).
 pub struct Compiler<'a> {
     code: &'a [u8],
 }
@@ -52,7 +53,7 @@ impl<'a> Compiler<'a> {
                     }
                     j += 1;
                 }
-                // Jump target ist the instruction after the matching backward jump.
+                // Jump target is the instruction after the matching backward jump.
                 instructions[i] = Instruction::JumpZero(j - i + 1);
             }
             i += 1;
@@ -68,7 +69,7 @@ impl<'a> Compiler<'a> {
                     instructions[matching_jump],
                     Instruction::JumpNotZeroPlaceholder
                 );
-                // Jump target ist the instruction after the matching forward jump.
+                // Jump target is the instruction after the matching forward jump.
                 instructions[matching_jump] = Instruction::JumpNotZero(matching_jump - i - 1);
             }
             i += 1;
@@ -87,9 +88,12 @@ impl<'a> Compiler<'a> {
 
         while *i < self.code.len() {
             if self.code[*i] != instruction && !IDENTS.contains(&self.code[*i]) {
+                // Ignore unknown identifiers.
                 *i += 1;
                 continue;
             } else if self.code[*i] != instruction && IDENTS.contains(&self.code[*i]) {
+                // We reached a valid instruction but it differs from the one we are processing in
+                // this call.
                 break;
             }
 
