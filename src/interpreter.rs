@@ -4,6 +4,7 @@ use crate::syntax::{
     IDENT_DEC_DATA, IDENT_DEC_DP, IDENT_INC_DATA, IDENT_INC_DP, IDENT_JUMP_NOT_ZERO,
     IDENT_JUMP_ZERO, IDENT_READ_BYTE, IDENT_WRITE_BYTE,
 };
+use crate::FlushBehavior;
 
 /// The memory size that is available to a Brainfuck program.
 const DATA_SIZE: usize = 30_000;
@@ -48,7 +49,7 @@ where
 
     /// Executes the program, returning an error if reading from the reader
     /// or writing to the writer fails.
-    pub fn execute(&mut self) -> io::Result<()> {
+    pub fn execute(&mut self, flush: FlushBehavior) -> io::Result<()> {
         while self.ip < self.code.len() {
             let instruction = self.code[self.ip];
             match instruction {
@@ -62,7 +63,12 @@ where
                 IDENT_READ_BYTE => self
                     .reader
                     .read_exact(&mut self.data[self.dp..self.dp + 1])?,
-                IDENT_WRITE_BYTE => self.writer.write_all(&self.data[self.dp..self.dp + 1])?,
+                IDENT_WRITE_BYTE => {
+                    self.writer.write_all(&self.data[self.dp..self.dp + 1])?;
+                    if flush == FlushBehavior::OnWrite {
+                        self.writer.flush()?;
+                    }
+                }
                 IDENT_JUMP_ZERO if self.data[self.dp] == 0 => {
                     let mut brackets = 0;
                     loop {
@@ -97,13 +103,19 @@ where
             self.ip += 1;
         }
 
-        self.writer.flush()
+        if flush == FlushBehavior::OnEnd {
+            self.writer.flush()
+        } else {
+            Ok(())
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use std::io::{self, Cursor};
+
+    use crate::FlushBehavior;
 
     use super::{Interpreter, DATA_SIZE};
 
@@ -116,7 +128,7 @@ mod tests {
         let mut interpreter = Interpreter::new(code, &mut reader, &mut writer);
         assert_eq!(interpreter.dp, 0);
 
-        interpreter.execute().unwrap();
+        interpreter.execute(FlushBehavior::OnEnd).unwrap();
         assert_eq!(interpreter.dp, 1);
     }
 
@@ -129,7 +141,7 @@ mod tests {
         let mut writer = Vec::new();
 
         Interpreter::new(&code, &mut reader, &mut writer)
-            .execute()
+            .execute(FlushBehavior::OnEnd)
             .unwrap();
     }
 
@@ -142,7 +154,7 @@ mod tests {
         let mut writer = Vec::new();
 
         Interpreter::new(code, &mut reader, &mut writer)
-            .execute()
+            .execute(FlushBehavior::OnEnd)
             .unwrap();
     }
 
@@ -153,7 +165,7 @@ mod tests {
         let mut writer = Vec::new();
 
         let mut interpreter = Interpreter::new(code, &mut reader, &mut writer);
-        interpreter.execute().unwrap();
+        interpreter.execute(FlushBehavior::OnEnd).unwrap();
 
         assert_eq!(interpreter.data[0], 1);
         assert_eq!(interpreter.data[1], 2);
@@ -166,7 +178,7 @@ mod tests {
         let mut writer = Vec::new();
 
         let mut interpreter = Interpreter::new(code, &mut reader, &mut writer);
-        interpreter.execute().unwrap();
+        interpreter.execute(FlushBehavior::OnEnd).unwrap();
 
         // Wrapping overflow because `data` is with 0 initialized.
         assert_eq!(interpreter.data[0], 255);
@@ -180,7 +192,7 @@ mod tests {
         let mut writer = Vec::new();
 
         let mut interpreter = Interpreter::new(code, &mut reader, &mut writer);
-        interpreter.execute().unwrap();
+        interpreter.execute(FlushBehavior::OnEnd).unwrap();
 
         assert_eq!(writer[0], 0);
         assert_eq!(writer[1], 1);
@@ -193,7 +205,7 @@ mod tests {
         let mut writer = Vec::new();
 
         let mut interpreter = Interpreter::new(code, &mut reader, &mut writer);
-        interpreter.execute().unwrap();
+        interpreter.execute(FlushBehavior::OnEnd).unwrap();
 
         assert_eq!(interpreter.data[0], 1);
         assert_eq!(interpreter.data[1], 2);
@@ -209,7 +221,7 @@ mod tests {
         let mut writer = Vec::new();
 
         let mut interpreter = Interpreter::new(code, &mut reader, &mut writer);
-        interpreter.execute().unwrap();
+        interpreter.execute(FlushBehavior::OnEnd).unwrap();
 
         assert_eq!(interpreter.data[0], 0);
     }
@@ -223,7 +235,7 @@ mod tests {
         let mut writer = Vec::new();
 
         let mut interpreter = Interpreter::new(code, &mut reader, &mut writer);
-        interpreter.execute().unwrap();
+        interpreter.execute(FlushBehavior::OnEnd).unwrap();
 
         assert_eq!(&writer, &[2, 1]);
     }
@@ -235,7 +247,7 @@ mod tests {
         let mut writer = Vec::new();
 
         let mut interpreter = Interpreter::new(code, &mut reader, &mut writer);
-        interpreter.execute().unwrap();
+        interpreter.execute(FlushBehavior::OnEnd).unwrap();
 
         assert_eq!(String::from_utf8(writer), Ok("Hello World!\n".into()));
     }
@@ -247,7 +259,7 @@ mod tests {
         let mut writer = Vec::new();
 
         let mut interpreter = Interpreter::new(code, &mut reader, &mut writer);
-        interpreter.execute().unwrap();
+        interpreter.execute(FlushBehavior::OnEnd).unwrap();
 
         assert_eq!(String::from_utf8(writer), Ok("Hello World! 255\n".into()));
     }

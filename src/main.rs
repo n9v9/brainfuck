@@ -4,6 +4,9 @@ use std::time::{Duration, Instant};
 use brainfuck::compiler::Compiler;
 use brainfuck::interpreter::Interpreter;
 use brainfuck::virtual_machine::VirtualMachine;
+use brainfuck::FlushBehavior;
+
+static FLUSH: FlushBehavior = FlushBehavior::OnEnd;
 
 fn main() {
     let program = include_str!("../programs/mandelbrot.b");
@@ -20,7 +23,7 @@ fn run_interpreter(program: &str) {
     let mut writer = io::stdout();
 
     Interpreter::new(program, &mut reader, &mut writer)
-        .execute()
+        .execute(FLUSH)
         .unwrap();
 }
 
@@ -31,7 +34,7 @@ fn run_virtual_machine(program: &str) {
     let instructions = Compiler::new(program).compile();
 
     VirtualMachine::new(&instructions, &mut reader, &mut writer)
-        .execute()
+        .execute(FLUSH)
         .unwrap();
 }
 

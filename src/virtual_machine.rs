@@ -1,6 +1,7 @@
 use std::io::{self, Read, Write};
 
 use crate::compiler::Instruction;
+use crate::FlushBehavior;
 
 const DATA_SIZE: usize = 30_000;
 
@@ -33,7 +34,7 @@ where
     }
 
     /// Executes the instructions.
-    pub fn execute(&mut self) -> io::Result<()> {
+    pub fn execute(&mut self, flush: FlushBehavior) -> io::Result<()> {
         while self.ip < self.instructions.len() {
             match self.instructions[self.ip] {
                 Instruction::IncDP(n) => {
@@ -54,6 +55,9 @@ where
                     for _ in 0..n {
                         self.writer.write_all(&self.data[self.dp..self.dp + 1])?;
                     }
+                    if flush == FlushBehavior::OnWrite {
+                        self.writer.flush()?;
+                    }
                 }
                 Instruction::JumpZero(n) if self.data[self.dp] == 0 => {
                     self.ip += n;
@@ -69,7 +73,11 @@ where
             self.ip += 1;
         }
 
-        self.writer.flush()
+        if flush == FlushBehavior::OnEnd {
+            self.writer.flush()
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -78,6 +86,7 @@ mod tests {
     use std::io;
 
     use crate::compiler::Compiler;
+    use crate::FlushBehavior;
 
     use super::VirtualMachine;
 
@@ -89,7 +98,7 @@ mod tests {
         let instructions = Compiler::new(include_str!("../programs/hello_world.b")).compile();
 
         VirtualMachine::new(&instructions, &mut reader, &mut writer)
-            .execute()
+            .execute(FlushBehavior::OnEnd)
             .unwrap();
 
         assert_eq!(String::from_utf8(writer), Ok("Hello World!\n".into()));
@@ -103,7 +112,7 @@ mod tests {
         let instructions = Compiler::new(include_str!("../programs/bitwidth.b")).compile();
 
         VirtualMachine::new(&instructions, &mut reader, &mut writer)
-            .execute()
+            .execute(FlushBehavior::OnEnd)
             .unwrap();
 
         assert_eq!(String::from_utf8(writer), Ok("Hello World! 255\n".into()));
