@@ -36,7 +36,7 @@ impl<'a> Compiler<'a> {
 
         i = 0;
         while i < instructions.len() {
-            if let Instruction::JumpZeroPlaceholder = instructions[i] {
+            if instructions[i] == Instruction::JumpZeroPlaceholder {
                 let mut jumps = 0;
                 let mut j = i;
                 loop {
@@ -126,7 +126,7 @@ impl<'a> Compiler<'a> {
 /// Represents an instruction to execute.
 /// The same instruction repeated multiple times is folded into one instruction
 /// with the number of repetitions as its argument.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Instruction {
     /// Increase the data pointer.
     IncDP(usize),
