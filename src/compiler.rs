@@ -3,17 +3,20 @@ use crate::syntax::{
     IDENT_JUMP_ZERO, IDENT_READ_BYTE, IDENT_WRITE_BYTE,
 };
 
+/// A compiler that turns a Brainfuck program into a list of instructions.
 pub struct Compiler<'a> {
     code: &'a [u8],
 }
 
 impl<'a> Compiler<'a> {
+    /// Create a new Compiler.
     pub fn new(code: &'a str) -> Self {
         Self {
             code: code.as_bytes(),
         }
     }
 
+    /// Analyze the given program and return a list of instructions to execute.
     pub fn compile(&mut self) -> Vec<Instruction> {
         let mut instructions = Vec::new();
         let mut i = 0;
@@ -118,17 +121,41 @@ impl<'a> Compiler<'a> {
     }
 }
 
+/// Represents an instruction to execute.
+/// The same instruction repeated multiple times is folded into one instruction
+/// with the number of repetitions as its argument.
 #[derive(Debug, PartialEq)]
 pub enum Instruction {
+    /// Increase the data pointer.
     IncDP(usize),
+
+    /// Decrease the data pointer.
     DecDP(usize),
+
+    /// Increase the byte at the data pointer.
     IncByteAtDP(usize),
+
+    /// Decrease the byte at the data pointer.
     DecByteAtDP(usize),
+
+    /// Write the byte at the data pointer to the writer.
     WriteByte,
+
+    /// Read a byte from the reader into the byte at the data pointer.
     ReadByte,
+
+    /// If the byte at the data pointer is zero, jump to the instruction after the matching
+    /// `JumpNotZero` instruction.
     JumpZero(usize),
+
+    /// Used to determine the relative offset to `JumpNotZero` in the compilation step.
     JumpZeroPlaceholder,
+
+    /// If the byte at the data pointer is not zero, jump to the instruction after the
+    /// matching `JumpZero` instruction.
     JumpNotZero(usize),
+
+    /// Used to determine the relative offset to `JumpZero` in the compilation step.
     JumpNotZeroPlaceholder,
 }
 

@@ -8,10 +8,10 @@ use brainfuck::virtual_machine::VirtualMachine;
 fn main() {
     let program = include_str!("../programs/mandelbrot.b");
 
-    // let interpreter = measure(|| run_interpreter(program));
+    let interpreter = measure(|| run_interpreter(program));
     let virtual_machine = measure(|| run_virtual_machine(program));
 
-    // eprintln!("Interpreter:     {:?}", interpreter);
+    eprintln!("Interpreter:     {:?}", interpreter);
     eprintln!("Virtual machine: {:?}", virtual_machine);
 }
 

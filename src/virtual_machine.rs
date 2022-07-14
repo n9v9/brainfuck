@@ -4,6 +4,7 @@ use crate::compiler::Instruction;
 
 const DATA_SIZE: usize = 30_000;
 
+/// A virtual machine that can execute Brainfuck code.
 pub struct VirtualMachine<'a, R, W> {
     instructions: &'a [Instruction],
     ip: usize,
@@ -18,6 +19,8 @@ where
     R: Read,
     W: Write,
 {
+    /// Create a new virtual machine that executes the given `instructions`.
+    /// Input is read from `reader` while the output is written to `writer`.
     pub fn new(instructions: &'a [Instruction], reader: &'a mut R, writer: &'a mut W) -> Self {
         Self {
             instructions,
@@ -29,6 +32,7 @@ where
         }
     }
 
+    /// Executes the instructions.
     pub fn execute(&mut self) -> io::Result<()> {
         while self.ip < self.instructions.len() {
             match self.instructions[self.ip] {
