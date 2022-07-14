@@ -224,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hello_world() {
+    fn test_program_hello_world() {
         let code = include_str!("../programs/hello_world.b");
         let mut reader = io::empty();
         let mut writer = Vec::new();
