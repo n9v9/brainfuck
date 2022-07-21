@@ -1,7 +1,9 @@
 pub mod compiler;
 pub mod interpreter;
+pub mod jit;
 pub mod virtual_machine;
 
+mod mmap;
 mod syntax;
 
 /// Describes when the [writer](std::io::Write) where bytes are written to is flushed.

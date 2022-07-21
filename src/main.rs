@@ -1,45 +1,44 @@
 use std::io;
 use std::time::{Duration, Instant};
 
-use brainfuck::compiler::Compiler;
+use brainfuck::compiler::{Compiler, Instruction};
 use brainfuck::interpreter::Interpreter;
+use brainfuck::jit::Jit;
 use brainfuck::virtual_machine::VirtualMachine;
 use brainfuck::FlushBehavior;
 
-static FLUSH: FlushBehavior = FlushBehavior::OnEnd;
+const PROGRAM: &str = include_str!("../programs/mandelbrot.b");
 
 fn main() {
-    let program = include_str!("../programs/mandelbrot.b");
-
-    let interpreter = measure(|| run_interpreter(program));
-    let virtual_machine = measure(|| run_virtual_machine(program));
-
-    eprintln!("Interpreter:     {:?}", interpreter);
-    eprintln!("Virtual machine: {:?}", virtual_machine);
+    measure(interpreter);
+    measure(virtual_machine);
+    measure(jit);
 }
 
-fn run_interpreter(program: &str) {
-    let mut reader = io::empty();
-    let mut writer = io::stdout();
-
-    Interpreter::new(program, &mut reader, &mut writer)
-        .execute(FLUSH)
+fn interpreter() {
+    Interpreter::new(PROGRAM, &mut io::empty(), &mut io::stdout().lock())
+        .execute(FlushBehavior::OnWrite)
         .unwrap();
 }
 
-fn run_virtual_machine(program: &str) {
-    let mut reader = io::empty();
-    let mut writer = io::stdout();
+fn virtual_machine() {
+    VirtualMachine::new(
+        &Compiler::new(PROGRAM).compile(),
+        &mut io::empty(),
+        &mut io::stdout().lock(),
+    )
+    .execute(FlushBehavior::OnWrite)
+    .unwrap();
+}
 
-    let instructions = Compiler::new(program).compile();
-
-    VirtualMachine::new(&instructions, &mut reader, &mut writer)
-        .execute(FLUSH)
+fn jit() {
+    Jit::new(&Compiler::new(PROGRAM).compile())
+        .execute()
         .unwrap();
 }
 
-fn measure(f: impl FnOnce()) -> Duration {
-    let now = Instant::now();
+fn measure(f: impl Fn()) {
+    let start = Instant::now();
     f();
-    now.elapsed()
+    eprintln!("Elapsed: {:?}", start.elapsed());
 }
