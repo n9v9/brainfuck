@@ -9,7 +9,7 @@ use crate::FlushBehavior;
 /// The memory size that is available to a Brainfuck program.
 const DATA_SIZE: usize = 30_000;
 
-/// An intepreter that can execute Brainfuck code.
+/// An interpreter that can execute Brainfuck code.
 pub struct Interpreter<'a, R, W> {
     /// Code to execute.
     code: &'a [u8],
@@ -35,7 +35,7 @@ where
     R: Read,
     W: Write,
 {
-    /// Creates a new intepreter to execute Brainfuck code.
+    /// Creates a new interpreter to execute Brainfuck code.
     pub fn new(code: &'a str, reader: &'a mut R, writer: &'a mut W) -> Self {
         Self {
             code: code.as_bytes(),

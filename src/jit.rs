@@ -4,15 +4,19 @@ use std::io;
 use crate::compiler::Instruction;
 use crate::mmap::MemoryMap;
 
-pub struct Jit<'a> {
+/// A JIT compiler takes instructions and turns them into machine code which can be
+/// run on x64 Linux machines.
+pub struct JitCompiler<'a> {
     instructions: &'a [Instruction],
 }
 
-impl<'a> Jit<'a> {
+impl<'a> JitCompiler<'a> {
+    /// Create a new JIT Compiler that executes the given instructions.
     pub fn new(instructions: &'a [Instruction]) -> Self {
         Self { instructions }
     }
 
+    /// Emit machine code which will then execute the given instructions.
     pub fn execute(self) -> io::Result<()> {
         let mut code = Vec::new();
 
@@ -67,11 +71,15 @@ impl<'a> Jit<'a> {
 
         let data = vec![0; 30_000];
 
+        // SAFETY: Data is declared directly above and r12 is used as the data pointer inside
+        // the Brainfuck program.
         unsafe {
             asm!("mov r12, {}", in(reg) &data[0]);
         }
 
-        mmap.execute();
+        // SAFETY: We wrote the machine code to the memory mapped region;
+        // and the machine code is valid.
+        unsafe { mmap.execute() }
 
         Ok(())
     }
@@ -180,19 +188,19 @@ mod tests {
     // to stdout.
 
     use crate::compiler::Compiler;
-    use crate::jit::Jit;
+    use crate::jit::JitCompiler;
 
     #[test]
     fn test_program_hello_world() {
         let instructions = Compiler::new(include_str!("../programs/hello_world.b")).compile();
-        Jit::new(&instructions).execute().unwrap();
+        JitCompiler::new(&instructions).execute().unwrap();
         // Output must be `Hello World!`.
     }
 
     #[test]
     fn test_program_bitwidth() {
         let instructions = Compiler::new(include_str!("../programs/bitwidth.b")).compile();
-        Jit::new(&instructions).execute().unwrap();
+        JitCompiler::new(&instructions).execute().unwrap();
         // Output must be `Hello World! 255`.
     }
 }

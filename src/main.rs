@@ -3,16 +3,20 @@ use std::time::{Duration, Instant};
 
 use brainfuck::compiler::{Compiler, Instruction};
 use brainfuck::interpreter::Interpreter;
-use brainfuck::jit::Jit;
+use brainfuck::jit::JitCompiler;
 use brainfuck::virtual_machine::VirtualMachine;
 use brainfuck::FlushBehavior;
 
 const PROGRAM: &str = include_str!("../programs/mandelbrot.b");
 
 fn main() {
-    measure(interpreter);
-    measure(virtual_machine);
-    measure(jit);
+    let interpreter = measure("Interpreter", interpreter);
+    let vm = measure("Virtual Machine", virtual_machine);
+    let jit = measure("JIT Compiler", jit);
+
+    eprintln!("Interpreter:     {interpreter:?}");
+    eprintln!("Virtual Machine: {vm:?}");
+    eprintln!("JIT Compiled:    {jit:?}");
 }
 
 fn interpreter() {
@@ -32,13 +36,16 @@ fn virtual_machine() {
 }
 
 fn jit() {
-    Jit::new(&Compiler::new(PROGRAM).compile())
+    JitCompiler::new(&Compiler::new(PROGRAM).compile())
         .execute()
         .unwrap();
 }
 
-fn measure(f: impl Fn()) {
+fn measure(desc: &str, f: impl Fn()) -> Duration {
+    eprintln!("{desc}:\n");
     let start = Instant::now();
     f();
-    eprintln!("Elapsed: {:?}", start.elapsed());
+    let time = start.elapsed();
+    eprintln!();
+    time
 }
