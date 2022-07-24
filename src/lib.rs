@@ -1,5 +1,6 @@
 pub mod compiler;
 pub mod interpreter;
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
 pub mod jit;
 pub mod virtual_machine;
 
