@@ -108,15 +108,17 @@ mod machine_code {
     impl MachineCode {
         pub fn emit_stack_setup(&mut self) -> usize {
             // push rbp
+            // push r12
             // mov  rbp,rsp
-            self.write(&[0x55, 0x48, 0x89, 0xe5])
+            self.write(&[0x55, 0x41, 0x54, 0x48, 0x89, 0xe5])
         }
 
         pub fn emit_stack_teardown(&mut self) -> usize {
             // mov rsp,rbp
+            // pop r12
             // pop rbp
             // ret
-            self.write(&[0x48, 0x89, 0xec, 0x5d, 0xc3])
+            self.write(&[0x48, 0x89, 0xec, 0x41, 0x5c, 0x5d, 0xc3])
         }
 
         pub fn emit_inc_dp(&mut self, n: usize) -> usize {
