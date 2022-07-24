@@ -8,12 +8,13 @@ pub struct ReadWritable;
 pub struct Executable;
 
 /// A wrapper around the `mmap(2)` syscall.
-pub struct MemoryMap<'a, Mode = ReadWritable> {
-    addr: &'a mut [u8],
+pub struct MemoryMap<Mode = ReadWritable> {
+    addr: *mut c_void,
+    len: usize,
     mode: PhantomData<Mode>,
 }
 
-impl<'a> MemoryMap<'a, ReadWritable> {
+impl MemoryMap<ReadWritable> {
     /// Create a new readable and writable memory mapped region.
     pub fn new(len: usize) -> io::Result<Self> {
         // SAFETY: This call is according to the man pages.
@@ -32,38 +33,36 @@ impl<'a> MemoryMap<'a, ReadWritable> {
             return Err(Error::last_os_error());
         }
 
-        // SAFETY: `mmap` returns a mutable pointer to the mapped area that is `len` bytes long.
-        let addr = unsafe { slice::from_raw_parts_mut(addr as *mut u8, len) };
-
         Ok(Self {
             addr,
+            len,
             mode: PhantomData,
         })
     }
 
     /// Returns a mutable reference to the memory mapped region.
     pub fn get_mut(&mut self) -> &mut [u8] {
-        &mut self.addr
+        // SAFETY: `mmap` returns a mutable pointer to the mapped area that is `len` bytes long.
+        unsafe { slice::from_raw_parts_mut(self.addr as *mut u8, self.len) }
     }
 
     /// Changes the permissions of the memory mapped region from readable and writable
     /// to only executable.
-    pub fn set_executable(self) -> io::Result<MemoryMap<'a, Executable>> {
-        let addr = &mut self.addr[0] as *mut u8 as *mut c_void;
-
+    pub fn set_executable(self) -> io::Result<MemoryMap<Executable>> {
         // SAFETY: `mprotect` can only be called once and only after a successful call to `mmap`.
-        if unsafe { libc::mprotect(addr, self.addr.len(), PROT_EXEC) } == -1 {
+        if unsafe { libc::mprotect(self.addr, self.len, PROT_EXEC) } == -1 {
             Err(Error::last_os_error())
         } else {
             Ok(MemoryMap {
                 addr: self.addr,
+                len: self.len,
                 mode: PhantomData,
             })
         }
     }
 }
 
-impl<'a> MemoryMap<'a, Executable> {
+impl MemoryMap<Executable> {
     /// Casts the first byte of the memory mapped region into a function pointer and calls it.
     ///
     /// # Safety
@@ -71,8 +70,7 @@ impl<'a> MemoryMap<'a, Executable> {
     /// The method is unsafe because the caller can write arbitrary values to the memory mapped
     /// region by calling [get_mut](crate::mmap::MemoryMap::get_mut).
     pub unsafe fn execute(self) {
-        let addr = &mut self.addr[0] as *mut u8 as *mut c_void;
-        let fn_ptr = mem::transmute::<_, fn() -> ()>(addr);
-        fn_ptr();
+        let function = mem::transmute::<_, fn() -> ()>(self.addr);
+        function();
     }
 }
