@@ -9,7 +9,7 @@ const DATA_SIZE: usize = 30_000;
 pub struct VirtualMachine<'a, R, W> {
     instructions: &'a [Instruction],
     ip: usize,
-    data: [u8; DATA_SIZE],
+    data: Vec<u8>,
     dp: usize,
     reader: &'a mut R,
     writer: &'a mut W,
@@ -26,7 +26,7 @@ where
         Self {
             instructions,
             ip: 0,
-            data: [0; DATA_SIZE],
+            data: vec![0; DATA_SIZE],
             dp: 0,
             reader,
             writer,

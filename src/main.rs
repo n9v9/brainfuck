@@ -1,7 +1,7 @@
 use std::io;
 use std::time::{Duration, Instant};
 
-use brainfuck::compiler::{Compiler, Instruction};
+use brainfuck::compiler::Compiler;
 use brainfuck::interpreter::Interpreter;
 use brainfuck::jit::JitCompiler;
 use brainfuck::virtual_machine::VirtualMachine;

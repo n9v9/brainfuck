@@ -18,7 +18,7 @@ pub struct Interpreter<'a, R, W> {
     ip: usize,
 
     /// Zero initialized, available memory for `code`.
-    data: [u8; DATA_SIZE],
+    data: Vec<u8>,
 
     /// Data pointer into `data`.
     dp: usize,
@@ -40,7 +40,7 @@ where
         Self {
             code: code.as_bytes(),
             ip: 0,
-            data: [0; DATA_SIZE],
+            data: vec![0; DATA_SIZE],
             dp: 0,
             reader,
             writer,
