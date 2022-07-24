@@ -134,23 +134,71 @@ mod machine_code {
         }
 
         pub fn emit_inc_dp(&mut self, n: usize) -> usize {
-            // inc r12
-            (0..n).map(|_| self.write(&[0x49, 0xff, 0xc4])).sum()
+            let n = n as u8;
+            match n {
+                1 => {
+                    // inc r12
+                    self.write(&[0x49, 0xff, 0xc4])
+                }
+                2..=127 => {
+                    // add r12,<n>
+                    self.write(&[0x49, 0x83, 0xc4, n])
+                }
+                128..=255 => {
+                    // add r12,<n>
+                    self.write(&[0x49, 0x81, 0xc4, n, 0x00, 0x00, 0x00])
+                }
+                _ => 0,
+            }
         }
 
         pub fn emit_dec_dp(&mut self, n: usize) -> usize {
-            // dec r12
-            (0..n).map(|_| self.write(&[0x49, 0xff, 0xcc])).sum()
+            let n = n as u8;
+            match n {
+                1 => {
+                    // dec r12
+                    self.write(&[0x49, 0xff, 0xcc])
+                }
+                2..=127 => {
+                    // sub r12,<n>
+                    self.write(&[0x49, 0x83, 0xec, n])
+                }
+                128..=255 => {
+                    // sub r12,<n>
+                    self.write(&[0x49, 0x81, 0xec, n, 0x00, 0x00, 0x00])
+                }
+                _ => 0,
+            }
         }
 
         pub fn emit_inc_byte_at_dp(&mut self, n: usize) -> usize {
-            // inc BYTE PTR [r12]
-            (0..n).map(|_| self.write(&[0x41, 0xfe, 0x04, 0x24])).sum()
+            let n = n as u8;
+            match n {
+                1 => {
+                    // inc BYTE PTR [r12]
+                    self.write(&[0x41, 0xfe, 0x04, 0x24])
+                }
+                2..=255 => {
+                    // add BYTE PTR [r12],<n>
+                    self.write(&[0x41, 0x80, 0x04, 0x24, n])
+                }
+                _ => 0,
+            }
         }
 
         pub fn emit_dec_byte_at_dp(&mut self, n: usize) -> usize {
-            // dec BYTE PTR [r12]
-            (0..n).map(|_| self.write(&[0x41, 0xfe, 0x0c, 0x24])).sum()
+            let n = n as u8;
+            match n {
+                1 => {
+                    // dec BYTE PTR [r12]
+                    self.write(&[0x41, 0xfe, 0x0c, 0x24])
+                }
+                2..=255 => {
+                    // sub BYTE PTR [r12],<n>
+                    self.write(&[0x41, 0x80, 0x2c, 0x24, n])
+                }
+                _ => 0,
+            }
         }
 
         pub fn emit_write_byte_at_dp(&mut self, n: usize) -> usize {
@@ -183,7 +231,7 @@ mod machine_code {
 
         pub fn emit_jump_zero(&mut self, skip_bytes: i32) -> usize {
             // cmp BYTE PTR [r12],0x0
-            // je  <offset>
+            // je  <skip_bytes>
             let jump = skip_bytes.to_le_bytes();
             self.write(&[
                 0x41, 0x80, 0x3c, 0x24, 0x00, 0x0f, 0x84, jump[0], jump[1], jump[2], jump[3],
@@ -192,7 +240,7 @@ mod machine_code {
 
         pub fn emit_jump_not_zero(&mut self, skip_bytes: usize) -> usize {
             // cmp BYTE PTR [r12],0x0
-            // jne  <offset>
+            // jne <skip_bytes>
 
             // The current instruction is 11 bytes long.
             let jump = ((skip_bytes + 11) as i32).wrapping_neg().to_le_bytes();
