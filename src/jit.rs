@@ -1,4 +1,3 @@
-use std::arch::asm;
 use std::io;
 
 use crate::compiler::Instruction;
@@ -23,7 +22,9 @@ impl<'a> JitCompiler<'a> {
 
     /// Emit machine code which will then execute the given instructions.
     pub fn execute(mut self) -> io::Result<()> {
-        self.machine_code.emit_stack_setup();
+        let data = vec![0; 30_000];
+
+        self.machine_code.emit_stack_setup(&data[0]);
 
         for (i, instruction) in self.instructions.iter().enumerate() {
             match instruction {
@@ -66,14 +67,6 @@ impl<'a> JitCompiler<'a> {
         mmap.get_mut().copy_from_slice(self.machine_code.get_buf());
         let mmap = mmap.set_executable()?;
 
-        let data = vec![0; 30_000];
-
-        // SAFETY: Data is declared directly above and r12 is used as the data pointer inside
-        // the Brainfuck program.
-        unsafe {
-            asm!("mov r12, {}", in(reg) &data[0]);
-        }
-
         // SAFETY: We wrote the machine code to the memory mapped region;
         // and the machine code is valid.
         unsafe { mmap.execute() }
@@ -106,11 +99,30 @@ mod machine_code {
     }
 
     impl MachineCode {
-        pub fn emit_stack_setup(&mut self) -> usize {
+        pub fn emit_stack_setup(&mut self, data_start: *const u8) -> usize {
             // push rbp
             // push r12
+            // mov  r12,<data_start>
             // mov  rbp,rsp
-            self.write(&[0x55, 0x41, 0x54, 0x48, 0x89, 0xe5])
+            let data_start = (data_start as usize).to_le_bytes();
+            self.write(&[
+                0x55,
+                0x41,
+                0x54,
+                0x49,
+                0xbc,
+                data_start[0],
+                data_start[1],
+                data_start[2],
+                data_start[3],
+                data_start[4],
+                data_start[5],
+                data_start[6],
+                data_start[7],
+                0x48,
+                0x89,
+                0xe5,
+            ])
         }
 
         pub fn emit_stack_teardown(&mut self) -> usize {
