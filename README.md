@@ -8,6 +8,21 @@ Brainfuck programs:
 - Virtual Machine
 - JIT-Compiler for x64 Linux
 
+## CLI
+
+Execute the program with the JIT-Compiler if available, otherwise use the
+virtual machine:
+
+```
+brainfuck ./programs/mandelbrot.b
+```
+
+Explicitly specify the execution environment:
+
+```
+brainfuck --env jit ./programs/mandelbrot.b
+```
+
 ## Execution Environments
 
 ### Interpreter
