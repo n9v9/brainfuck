@@ -1,3 +1,4 @@
+use crate::remove_non_idents;
 use crate::syntax::{
     IDENTS, IDENT_DEC_DATA, IDENT_DEC_DP, IDENT_INC_DATA, IDENT_INC_DP, IDENT_JUMP_NOT_ZERO,
     IDENT_JUMP_ZERO, IDENT_READ_BYTE, IDENT_WRITE_BYTE,
@@ -5,15 +6,15 @@ use crate::syntax::{
 
 /// A compiler that turns a Brainfuck program into a list of instructions which can then be
 /// executed by the [virtual machine](crate::virtual_machine::VirtualMachine).
-pub struct Compiler<'a> {
-    code: &'a [u8],
+pub struct Compiler {
+    code: Vec<u8>,
 }
 
-impl<'a> Compiler<'a> {
+impl Compiler {
     /// Create a new Compiler.
-    pub fn new(code: &'a str) -> Self {
+    pub fn new(code: &str) -> Self {
         Self {
-            code: code.as_bytes(),
+            code: remove_non_idents(code),
         }
     }
 

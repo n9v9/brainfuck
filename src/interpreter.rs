@@ -4,7 +4,7 @@ use crate::syntax::{
     IDENT_DEC_DATA, IDENT_DEC_DP, IDENT_INC_DATA, IDENT_INC_DP, IDENT_JUMP_NOT_ZERO,
     IDENT_JUMP_ZERO, IDENT_READ_BYTE, IDENT_WRITE_BYTE,
 };
-use crate::FlushBehavior;
+use crate::{remove_non_idents, FlushBehavior};
 
 /// The memory size that is available to a Brainfuck program.
 const DATA_SIZE: usize = 30_000;
@@ -12,7 +12,7 @@ const DATA_SIZE: usize = 30_000;
 /// An interpreter that can execute Brainfuck code.
 pub struct Interpreter<'a, R, W> {
     /// Code to execute.
-    code: &'a [u8],
+    code: Vec<u8>,
 
     /// Instruction pointer into `code`.
     ip: usize,
@@ -38,7 +38,7 @@ where
     /// Creates a new interpreter to execute Brainfuck code.
     pub fn new(code: &'a str, reader: &'a mut R, writer: &'a mut W) -> Self {
         Self {
-            code: code.as_bytes(),
+            code: remove_non_idents(code),
             ip: 0,
             data: vec![0; DATA_SIZE],
             dp: 0,
